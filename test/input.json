@@ -1,0 +1,28 @@
+{
+  "session": {
+    "sessionId": "SessionId.Session1",
+    "application": {
+      "applicationId": "amzn1.ask.skill.001c6e7e-af75-471f-be65-7955292d01b9"
+    },
+    "attributes": {},
+    "user": {
+      "userId": "arn:aws:iam::269035457366:user/alexa_user"
+    },
+    "new": true
+  },
+  "request": {
+    "type": "IntentRequest",
+    "requestId": "EdwRequestId.TestSession1",
+    "locale": "en-US",
+    "timestamp": "2017-01-12T20:37:53Z",
+    "intent": {
+      "name": "OneshotBookIntent",
+      "slots": {
+        "Imprint": {
+          "value": "avon romance"
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
