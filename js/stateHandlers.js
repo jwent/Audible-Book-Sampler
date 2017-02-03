@@ -3,6 +3,8 @@
 var Alexa = require('alexa-sdk');
 var audioData = require('./audioAssets');
 var constants = require('./constants');
+var books = require('google-books-search');
+var striptags = require('striptags');
 
 var http = require('http');
 var https = require('https');
@@ -114,8 +116,13 @@ var stateHandlers = {
             var intent = this.event.request.intent;
             var session = this.event.session;
             var response = this.response;
-            handleOneshotBookRequest(intent, session, response);
-            controller.play.call(this)
+            response.speechOutput = {}
+            this.handler.state = constants.states.START_MODE;
+            var book = handleOneshotBookRequest(intent, session, this);
+            //var cardTitle = 'Playing ';
+            //var cardContent = 'Playing ';
+            //response.cardRenderer(cardTitle, cardContent, null);
+//controller.play.call(this)
         },
         'PlayAudio' : function () { controller.play.call(this) },
         'AMAZON.NextIntent' : function () { controller.playNext.call(this) },
@@ -407,7 +414,7 @@ function getImprintFromIntent(intent, assignDefault) {
 }
 
 
-function handleOneshotBookRequest(intent, session, response) {
+function handleOneshotBookRequest(intent, session, that) {
 
     // Determine city, using default if none provided
     console.dir(intent);
@@ -424,19 +431,21 @@ function handleOneshotBookRequest(intent, session, response) {
         // if we received a value for the incorrect city, repeat it to the user, otherwise we received an empty slot
         speechOutput = Imprint.imprint ? "I'm sorry, I don't have a book for " + Imprint.imprint + ". " + repromptText : repromptText;
 
-        response.ask(speechOutput, repromptText);
+        that.resposne.speak(speechOutput).listen(repromptText);
+        that.emit(':thatReady');
+        //that.ask(speechOutput, repromptText);
         return;
     }
 
     // all slots filled, either from the user or by default values. Move to final request
-    getFinalBookResponse(Imprint, response);
+    getFinalBookResponse(Imprint, that);
 }
 
-function getFinalBookResponse(Imprint, response) {
+function getFinalBookResponse(Imprint, that) {
 
     // Issue the request, and respond to the user
     console.dir(Imprint);
-    makeBookRequest(Imprint.imprint, function bookResponseCallback(err, bookResponse) {
+    makeBookRequest(Imprint.imprint, that, function bookResponseCallback(err, bookResponse, that) {
         var speechOutput;
 
         speechOutput = bookResponse;
@@ -450,58 +459,92 @@ function getFinalBookResponse(Imprint, response) {
                 "largeImageUrl": "https://s3.amazonaws.com/alexa-card-images/x800.png"
             }
 
-        response.tellWithCard(speechOutput, "BookRecommendation", speechOutput, image)
+         /*if (canThrowCard.call(this)) {
+                var cardTitle = 'Playing ' + podcast.title;
+                var cardContent = 'Playing ' + podcast.title;
+                this.that.cardRenderer(cardTitle, cardContent, null);
+            }*/
+        //that.tellWithCard(speechOutput, "BookRecommendation", speechOutput, image)
+        var repromptText = "Would you like to hear a sample?";
+        that.response.speak(speechOutput+repromptText);
+        that.emit(':responseReady');
+        //that.response.speak("Here is a sample of the audio book read by Jeremy Went;");
+        //that.emit(':responseReady');
+        
+        controller.play.call(that)
     });
 }
 
-function makeBookRequest(station, date, tideResponseCallback) {
+function makeBookRequest(imprint, response, bookResponseCallback) {
 
-    var datum = "MLLW";
-    var endpoint = 'http://api.harpercollins.com/titleservice/v1/products?catalog=AvonRomance&page=1&api_key=6t8fg4vxxcjxm3hhxuccq4fc&sig=2a97ec69cb0aa0c5bd742c95d6e20c67f4ebaccc4043a00384796a23c8468c9b';
-    var queryString = '?' + date.requestDateParam;
-    queryString += '&station=' + station;
-    queryString += '&product=predictions&datum=' + datum + '&units=english&time_zone=lst_ldt&format=json';
-    queryString = '';
-    var book = 0;
-    var title = 'Some title.';
-    var author = 'Some author.';
-    var noaaResponseString = '';
+    var catalog = imprint;
+    var endpoint = 'https://api.harpercollins.com/titleservice/v1/products?catalog=' + catalog + '&page=1&api_key=6t8fg4vxxcjxm3hhxuccq4fc&sig=2a97ec69cb0aa0c5bd742c95d6e20c67f4ebaccc4043a00384796a23c8468c9b';
+    var book, title, author;
+    var bookResponseString = '';
+    
+    console.log('endpoint:'+endpoint);
 
-    http.get(endpoint + queryString, function (res) {
+    var rand = function randomIntFromInterval(min, max) {
+            return Math.floor(Math.random()*(max-min+1)+min);
+        }
+
+
+    https.get(endpoint, function (res) {
 
         /*books.search('Professional JavaScript for Web Developers', function(error, results) {
             if ( ! error ) {
-                //console.log("results");
+                console.log("results");
             } else {
                 console.log(error);
             }
         });*/
 
-        
         console.log('Status Code: ' + res.statusCode);
 
-        if (res.statusCode != 200) {
-            tideResponseCallback(new Error("Non 200 Response"));
+        if (res.statusCode != 200 && res.statusCode != 301) {
+            bookResponseCallback(new Error("Non 200 or 301 Response"));
         }
 
         res.on('data', function (data) {
-            noaaResponseString += data;
+            bookResponseString += data;
+            //console.dir(data)
         });
 
         res.on('end', function () {
+            var bookResponseObject = JSON.parse(bookResponseString);
+            var bookIndex = rand(0, bookResponseObject.data.length - 1)
+            console.log(bookResponseObject.data[bookIndex]);
             
-            var noaaResponseObject = JSON.parse(noaaResponseString);
-            console.log(noaaResponseObject.data[0]);
-            
-            book = noaaResponseObject.data[0];
+            book = bookResponseObject.data[bookIndex];
             title = book.title;
-            author = book.contributors[0].name;
-            var keynote = striptags(book.keynote);
+            author = book.contributors[0].name; //Use first author TODO: use all authors.
+            
+            if (book.keynote != null)
+                var keynote = parseHtmlEntities(striptags(book.keynote));
+            else
+                var keynote = parseHtmlEntities(striptags(book.shortdescription));
 
-            tideResponseCallback(null, "How about " + title + " by " + author + ';' + keynote);
+            const regex = /&#(\d+);/gi;
+
+            var desc = keynote.replace(regex, function(match, numStr) {
+                var num = parseInt(numStr, 10);
+                return String.fromCharCode(num);
+            });
+            
+            console.log(desc);
+
+            bookResponseCallback(null, "How about " + title + " by " + author + ';' + desc, response);
+            
         });
     }).on('error', function (e) {
         console.log("Communications error: " + e.message);
-        tideResponseCallback(new Error(e.message));
+        bookResponseCallback(new Error(e.message));
     });
+
+    function parseHtmlEntities(str) {
+        return str.replace(/&#([0-9]{1,3});/gi, function(match, numStr) {
+            var num = parseInt(numStr, 10); // read num as normal number
+            return String.fromCharCode(num);
+        });
+    }
 }

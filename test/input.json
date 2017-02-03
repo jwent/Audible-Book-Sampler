@@ -22,6 +22,10 @@
           "value": "avon romance"
         }
       }
+    },
+    "_intent": {
+      "name": "PlayAudio",
+      "slots": {}
     }
   },
   "version": "1.0"
