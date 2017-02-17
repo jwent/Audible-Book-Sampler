@@ -15,7 +15,7 @@
     "requestId": "EdwRequestId.TestSession1",
     "locale": "en-US",
     "timestamp": "2017-01-12T20:37:53Z",
-    "intent": {
+    "_intent": {
       "name": "OneshotBookIntent",
       "slots": {
         "Imprint": {
@@ -23,7 +23,11 @@
         }
       }
     },
-    "_intent": {
+    "intent": {
+      "name": "AMAZON.StopIntent",
+      "slots": {}
+    },
+    "__intent": {
       "name": "PlayAudio",
       "slots": {}
     }

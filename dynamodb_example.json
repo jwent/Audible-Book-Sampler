@@ -1,0 +1,20 @@
+{
+  "mapAttr": {
+    "enqueuedToken": null,
+    "index": 0,
+    "loop": true,
+    "offsetInMilliseconds": 0,
+    "playbackIndexChanged": false,
+    "playOrder": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "shuffle": false,
+    "STATE": "_PLAY_MODE"
+  },
+  "userId": "arn:aws:iam::269035457366:user/alexa_user"
+}

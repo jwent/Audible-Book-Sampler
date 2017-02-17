@@ -14,6 +14,7 @@
   "author": "Amazon.com",
   "license": "See license in ../LICENSE.txt",
   "dependencies": {
+    "airtable": "^0.4.4",
     "alexa-sdk": "^1.0.4",
     "google-books-search": "^0.3.1",
     "striptags": "^2.2.1"
