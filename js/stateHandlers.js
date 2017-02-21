@@ -4,22 +4,6 @@ var Alexa = require('alexa-sdk');
 var audioData = require('./audioAssets');
 var constants = require('./constants');
 
-var http = require('http');
-var https = require('https');
-
-var IMPRINTS = {
-    'avonromance': 'AvonRomance',
-    'avon romance': 'AvonRomance',
-    'Avon romance': 'AvonRomance',
-    'harperone': 'HarperOne',
-    'harpercollins 360': 'HarperCollins 360',
-    'harpercollins360': 'HarperCollins 360',
-    'Galley Titles': 'GalleyTitles',
-    'galleytitles': 'GalleyTitles',
-    'galley titles': 'GalleyTitles'
-
-};
-
 var stateHandlers = {
     startModeIntentHandlers : Alexa.CreateStateHandler(constants.states.START_MODE, {
         /*
@@ -36,7 +20,7 @@ var stateHandlers = {
             //  Change state to START_MODE
             this.handler.state = constants.states.START_MODE;
 
-            var message = 'Welcome to the Harper Collins Podcast. You can say, play the audio to begin the podcast.';
+            var message = 'Welcome to the AWS Podcast. You can say, play the audio to begin the podcast.';
             var reprompt = 'You can say, play the audio, to begin.';
 
             this.response.speak(message).listen(reprompt);
@@ -109,13 +93,6 @@ var stateHandlers = {
 
             this.response.speak(message).listen(reprompt);
             this.emit(':responseReady');
-        },
-        'OneshotBookIntent' : function () {
-            var intent = this.event.request.intent;
-            var session = this.event.session;
-            var response = this.response;
-            handleOneshotBookRequest(intent, session, response);
-            controller.play.call(this)
         },
         'PlayAudio' : function () { controller.play.call(this) },
         'AMAZON.NextIntent' : function () { controller.playNext.call(this) },
@@ -226,7 +203,7 @@ var controller = function () {
             if (canThrowCard.call(this)) {
                 var cardTitle = 'Playing ' + podcast.title;
                 var cardContent = 'Playing ' + podcast.title;
-                this.response.cardRenderer(cardTitle, cardContent, null);
+                this.response.linkAccountCard();
             }
 
             this.response.audioPlayerPlay(playBehavior, podcast.url, token, null, offsetInMilliseconds);
@@ -375,133 +352,4 @@ function shuffleOrder(callback) {
         array[randomIndex] = temp;
     }
     callback(array);
-}
-
-function getImprintFromIntent(intent, assignDefault) {
-
-    var imprintSlot = intent.slots.Imprint;
-    // slots can be missing, or slots can be provided but with empty value.
-    // must test for both.
-    if (!imprintSlot || !imprintSlot.value) {
-        if (!assignDefault) {
-            return {
-                error: true
-            }
-        } else {
-            // For sample skill, default to Seattle.
-            return {
-                imprint: 'AvonRomance',
-                error: false
-            }
-        }
-    } else {
-        var imprintName = IMPRINTS[imprintSlot.value];
-
-        console.log('imprintName:'+imprintName);
-
-        return {
-            imprint: imprintName,
-            error: false
-        }
-    }
-}
-
-
-function handleOneshotBookRequest(intent, session, response) {
-
-    // Determine city, using default if none provided
-    console.dir(intent);
-    var Imprint = getImprintFromIntent(intent, true),
-        repromptText,
-        speechOutput;
-    
-    console.dir(Imprint);
-
-    if (Imprint.error) {
-        // invalid city. move to the dialog
-        repromptText = "Currently, I have these publishers to choose from: " + getAllImprintsText()
-            + "Which publisher would you like a book recommendation for?";
-        // if we received a value for the incorrect city, repeat it to the user, otherwise we received an empty slot
-        speechOutput = Imprint.imprint ? "I'm sorry, I don't have a book for " + Imprint.imprint + ". " + repromptText : repromptText;
-
-        response.ask(speechOutput, repromptText);
-        return;
-    }
-
-    // all slots filled, either from the user or by default values. Move to final request
-    getFinalBookResponse(Imprint, response);
-}
-
-function getFinalBookResponse(Imprint, response) {
-
-    // Issue the request, and respond to the user
-    console.dir(Imprint);
-    makeBookRequest(Imprint.imprint, function bookResponseCallback(err, bookResponse) {
-        var speechOutput;
-
-        speechOutput = bookResponse;
-
-        if (err) {
-            speechOutput = "Sorry, the Harper Collins book recommendation service is experiencing a problem. Please try again later";
-        }
-
-        var image = {
-                "smallImageUrl": "https://s3.amazonaws.com/alexa-card-images/x480.png",
-                "largeImageUrl": "https://s3.amazonaws.com/alexa-card-images/x800.png"
-            }
-
-        response.tellWithCard(speechOutput, "BookRecommendation", speechOutput, image)
-    });
-}
-
-function makeBookRequest(station, date, tideResponseCallback) {
-
-    var datum = "MLLW";
-    var endpoint = 'http://api.harpercollins.com/titleservice/v1/products?catalog=AvonRomance&page=1&api_key=6t8fg4vxxcjxm3hhxuccq4fc&sig=2a97ec69cb0aa0c5bd742c95d6e20c67f4ebaccc4043a00384796a23c8468c9b';
-    var queryString = '?' + date.requestDateParam;
-    queryString += '&station=' + station;
-    queryString += '&product=predictions&datum=' + datum + '&units=english&time_zone=lst_ldt&format=json';
-    queryString = '';
-    var book = 0;
-    var title = 'Some title.';
-    var author = 'Some author.';
-    var noaaResponseString = '';
-
-    http.get(endpoint + queryString, function (res) {
-
-        /*books.search('Professional JavaScript for Web Developers', function(error, results) {
-            if ( ! error ) {
-                //console.log("results");
-            } else {
-                console.log(error);
-            }
-        });*/
-
-        
-        console.log('Status Code: ' + res.statusCode);
-
-        if (res.statusCode != 200) {
-            tideResponseCallback(new Error("Non 200 Response"));
-        }
-
-        res.on('data', function (data) {
-            noaaResponseString += data;
-        });
-
-        res.on('end', function () {
-            
-            var noaaResponseObject = JSON.parse(noaaResponseString);
-            console.log(noaaResponseObject.data[0]);
-            
-            book = noaaResponseObject.data[0];
-            title = book.title;
-            author = book.contributors[0].name;
-            var keynote = striptags(book.keynote);
-
-            tideResponseCallback(null, "How about " + title + " by " + author + ';' + keynote);
-        });
-    }).on('error', function (e) {
-        console.log("Communications error: " + e.message);
-        tideResponseCallback(new Error(e.message));
-    });
 }

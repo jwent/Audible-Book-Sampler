@@ -16,12 +16,7 @@
     "locale": "en-US",
     "timestamp": "2017-01-12T20:37:53Z",
     "intent": {
-      "name": "OneshotBookIntent",
-      "slots": {
-        "Imprint": {
-          "value": "avon romance"
-        }
-      }
+      "name": "AMAZON.StartOverIntent"
     }
   },
   "version": "1.0"
