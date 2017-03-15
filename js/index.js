@@ -14,7 +14,8 @@ exports.handler = function(event, context, callback){
         stateHandlers.playModeIntentHandlers,
         stateHandlers.remoteControllerHandlers,
         stateHandlers.resumeDecisionModeIntentHandlers,
-        audioEventHandlers
+        audioEventHandlers,
+        stateHandlers.overrideHandlers
     );
     alexa.execute();
 };

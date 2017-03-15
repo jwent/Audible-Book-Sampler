@@ -4,6 +4,16 @@ var Alexa = require('alexa-sdk');
 var audioData = require('./audioAssets');
 var constants = require('./constants');
 
+var EventEmitter = require('events');
+
+class MyEmmiter extends EventEmitter {}
+
+const myEmitter = new MyEmmiter();
+
+myEmitter.on(':responseReady', () => {
+    console.log('event');
+});
+
 var stateHandlers = {
     startModeIntentHandlers : Alexa.CreateStateHandler(constants.states.START_MODE, {
         /*
@@ -169,7 +179,12 @@ var stateHandlers = {
             this.response.speak(message).listen(message);
             this.emit(':responseReady');
         }
-    })
+    }),
+    'overrideHandlers' : {
+        ':responseReady' : function(a, b, c) {
+            console.log('here')
+        }
+    }
 };
 
 module.exports = stateHandlers;
